@@ -1,132 +1,155 @@
-#!/usr/bin/env bashio
+#!/usr/bin/env bash
 
 CONFIG_DIR="/config"
 CONFIG_FILE="${CONFIG_DIR}/mtg.toml"
 mkdir -p "${CONFIG_DIR}"
 
-# Читаем основные параметры
-DEBUG=$(bashio::config 'debug')
-SECRET=$(bashio::config 'secret')
-BIND_TO=$(bashio::config 'bind_to')
-CONCURRENCY=$(bashio::config 'concurrency')
-PREFER_IP=$(bashio::config 'prefer_ip')
-AUTO_UPDATE=$(bashio::config 'auto_update')
-TOLERATE_TIME_SKEWNESS=$(bashio::config 'tolerate_time_skewness')
-ALLOW_FALLBACK=$(bashio::config 'allow_fallback_on_unknown_dc')
+options_file="/data/options.json"
 
-# Проверяем обязательные параметры
-if [ -z "${SECRET}" ] || [ -z "${BIND_TO}" ]; then
-    bashio::log.error "secret и bind_to обязательны"
+if [ ! -f "$options_file" ]; then
+    echo "ERROR: options.json not found"
     exit 1
 fi
 
-# Начинаем формировать TOML
+# Читаем обязательные параметры
+secret=$(jq -r '.secret' "$options_file")
+bind_to=$(jq -r '.bind_to' "$options_file")
+
+if [ -z "$secret" ] || [ -z "$bind_to" ]; then
+    echo "ERROR: secret and bind_to are required"
+    exit 1
+fi
+
+# Основные параметры с значениями по умолчанию
+debug=$(jq -r '.debug // false' "$options_file")
+concurrency=$(jq -r '.concurrency // 8192' "$options_file")
+prefer_ip=$(jq -r '.prefer_ip // "only-ipv4"' "$options_file")
+auto_update=$(jq -r '.auto_update // true' "$options_file")
+tolerate_time_skewness=$(jq -r '.tolerate_time_skewness // "5s"' "$options_file")
+allow_fallback=$(jq -r '.allow_fallback_on_unknown_dc // false' "$options_file")
+
 cat > "${CONFIG_FILE}" <<EOF
-debug = ${DEBUG}
-secret = "${SECRET}"
-bind-to = "${BIND_TO}"
-concurrency = ${CONCURRENCY}
-prefer-ip = "${PREFER_IP}"
-auto-update = ${AUTO_UPDATE}
-tolerate-time-skewness = "${TOLERATE_TIME_SKEWNESS}"
-allow-fallback-on-unknown-dc = ${ALLOW_FALLBACK}
+debug = ${debug}
+secret = "${secret}"
+bind-to = "${bind_to}"
+concurrency = ${concurrency}
+prefer-ip = "${prefer_ip}"
+auto-update = ${auto_update}
+tolerate-time-skewness = "${tolerate_time_skewness}"
+allow-fallback-on-unknown-dc = ${allow_fallback}
 EOF
 
-# Добавляем раздел network, если он есть
-if bashio::config.has_value 'network.dns'; then
-    DNS=$(bashio::config 'network.dns')
-    cat >> "${CONFIG_FILE}" <<EOF
-
-[network]
-dns = "${DNS}"
-EOF
-    # Добавляем proxies, если есть
-    if bashio::config.has_value 'network.proxies'; then
-        PROXIES=$(bashio::config 'network.proxies')
-        # Преобразуем JSON-массив в TOML-массив
-        PROXIES_TOML=$(echo "${PROXIES}" | jq -r 'join(", ")')
-        cat >> "${CONFIG_FILE}" <<EOF
-proxies = [${PROXIES_TOML}]
-EOF
+# ----- Раздел network -----
+if jq -e '.network' "$options_file" > /dev/null 2>&1; then
+    echo >> "${CONFIG_FILE}"
+    echo "[network]" >> "${CONFIG_FILE}"
+    dns=$(jq -r '.network.dns // ""' "$options_file")
+    [ -n "$dns" ] && echo "dns = \"$dns\"" >> "${CONFIG_FILE}"
+    
+    if jq -e '.network.proxies' "$options_file" > /dev/null 2>&1; then
+        proxies=$(jq -r '.network.proxies | map("\"" + . + "\"") | join(", ")' "$options_file")
+        [ -n "$proxies" ] && echo "proxies = [$proxies]" >> "${CONFIG_FILE}"
     fi
-    # Добавляем timeout, если есть
-    if bashio::config.has_value 'network.timeout.tcp'; then
-        TCP_TIMEOUT=$(bashio::config 'network.timeout.tcp')
-        HTTP_TIMEOUT=$(bashio::config 'network.timeout.http')
-        IDLE_TIMEOUT=$(bashio::config 'network.timeout.idle')
-        cat >> "${CONFIG_FILE}" <<EOF
-
-[network.timeout]
-tcp = "${TCP_TIMEOUT}"
-http = "${HTTP_TIMEOUT}"
-idle = "${IDLE_TIMEOUT}"
-EOF
+    
+    if jq -e '.network.timeout' "$options_file" > /dev/null 2>&1; then
+        echo "[network.timeout]" >> "${CONFIG_FILE}"
+        tcp=$(jq -r '.network.timeout.tcp // ""' "$options_file")
+        http=$(jq -r '.network.timeout.http // ""' "$options_file")
+        idle=$(jq -r '.network.timeout.idle // ""' "$options_file")
+        [ -n "$tcp" ] && echo "tcp = \"$tcp\"" >> "${CONFIG_FILE}"
+        [ -n "$http" ] && echo "http = \"$http\"" >> "${CONFIG_FILE}"
+        [ -n "$idle" ] && echo "idle = \"$idle\"" >> "${CONFIG_FILE}"
     fi
 fi
 
-# Добавляем раздел defense (если есть)
-if bashio::config.has_value 'defense.doppelganger.repeats-per-raid'; then
-    DOPP_REPEATS=$(bashio::config 'defense.doppelganger.repeats-per-raid')
-    DOPP_RAID=$(bashio::config 'defense.doppelganger.raid-each')
-    DOPP_DRS=$(bashio::config 'defense.doppelganger.drs')
-    cat >> "${CONFIG_FILE}" <<EOF
-
-[defense.doppelganger]
-repeats-per-raid = ${DOPP_REPEATS}
-raid-each = "${DOPP_RAID}"
-drs = ${DOPP_DRS}
-EOF
-    # urls (если есть)
-    if bashio::config.has_value 'defense.doppelganger.urls'; then
-        URLS=$(bashio::config 'defense.doppelganger.urls')
-        URLS_TOML=$(echo "${URLS}" | jq -r 'map("\"" + . + "\"") | join(", ")')
-        cat >> "${CONFIG_FILE}" <<EOF
-urls = [${URLS_TOML}]
-EOF
+# ----- Раздел defense.doppelganger -----
+if jq -e '.defense.doppelganger' "$options_file" > /dev/null 2>&1; then
+    echo >> "${CONFIG_FILE}"
+    echo "[defense.doppelganger]" >> "${CONFIG_FILE}"
+    repeats=$(jq -r '.defense.doppelganger."repeats-per-raid" // 10' "$options_file")
+    raid=$(jq -r '.defense.doppelganger."raid-each" // "6h"' "$options_file")
+    drs=$(jq -r '.defense.doppelganger.drs // false' "$options_file")
+    echo "repeats-per-raid = $repeats" >> "${CONFIG_FILE}"
+    echo "raid-each = \"$raid\"" >> "${CONFIG_FILE}"
+    echo "drs = $drs" >> "${CONFIG_FILE}"
+    
+    if jq -e '.defense.doppelganger.urls' "$options_file" > /dev/null 2>&1; then
+        urls=$(jq -r '.defense.doppelganger.urls | map("\"" + . + "\"") | join(", ")' "$options_file")
+        [ -n "$urls" ] && echo "urls = [$urls]" >> "${CONFIG_FILE}"
     fi
 fi
 
-# Аналогично добавляем anti-replay, blocklist, allowlist, stats...
-
-# Просто для примера добавим остальные разделы, но в вашем полном config.yaml они уже есть.
-# Я допишу только ключевые, а остальные вы сможете легко добавить по аналогии.
-
-# anti-replay
-if bashio::config.has_value 'defense.anti-replay.enabled'; then
-    AR_ENABLED=$(bashio::config 'defense.anti-replay.enabled')
-    AR_MAX=$(bashio::config 'defense.anti-replay.max-size')
-    AR_ERROR=$(bashio::config 'defense.anti-replay.error-rate')
-    cat >> "${CONFIG_FILE}" <<EOF
-
-[defense.anti-replay]
-enabled = ${AR_ENABLED}
-max-size = "${AR_MAX}"
-error-rate = ${AR_ERROR}
-EOF
+# ----- defense.anti-replay -----
+if jq -e '.defense."anti-replay"' "$options_file" > /dev/null 2>&1; then
+    echo >> "${CONFIG_FILE}"
+    echo "[defense.anti-replay]" >> "${CONFIG_FILE}"
+    enabled=$(jq -r '.defense."anti-replay".enabled // false' "$options_file")
+    max_size=$(jq -r '.defense."anti-replay"."max-size" // "1mib"' "$options_file")
+    error_rate=$(jq -r '.defense."anti-replay"."error-rate" // 0.001' "$options_file")
+    echo "enabled = $enabled" >> "${CONFIG_FILE}"
+    echo "max-size = \"$max_size\"" >> "${CONFIG_FILE}"
+    echo "error-rate = $error_rate" >> "${CONFIG_FILE}"
 fi
 
-# blocklist
-if bashio::config.has_value 'defense.blocklist.enabled'; then
-    BL_ENABLED=$(bashio::config 'defense.blocklist.enabled')
-    BL_CONC=$(bashio::config 'defense.blocklist.download-concurrency')
-    BL_UPDATE=$(bashio::config 'defense.blocklist.update-each')
-    cat >> "${CONFIG_FILE}" <<EOF
-
-[defense.blocklist]
-enabled = ${BL_ENABLED}
-download-concurrency = ${BL_CONC}
-update-each = "${BL_UPDATE}"
-EOF
-    if bashio::config.has_value 'defense.blocklist.urls'; then
-        URLS=$(bashio::config 'defense.blocklist.urls')
-        URLS_TOML=$(echo "${URLS}" | jq -r 'map("\"" + . + "\"") | join(", ")')
-        cat >> "${CONFIG_FILE}" <<EOF
-urls = [${URLS_TOML}]
-EOF
+# ----- defense.blocklist -----
+if jq -e '.defense.blocklist' "$options_file" > /dev/null 2>&1; then
+    echo >> "${CONFIG_FILE}"
+    echo "[defense.blocklist]" >> "${CONFIG_FILE}"
+    enabled=$(jq -r '.defense.blocklist.enabled // false' "$options_file")
+    conc=$(jq -r '.defense.blocklist."download-concurrency" // 2' "$options_file")
+    update=$(jq -r '.defense.blocklist."update-each" // "24h"' "$options_file")
+    echo "enabled = $enabled" >> "${CONFIG_FILE}"
+    echo "download-concurrency = $conc" >> "${CONFIG_FILE}"
+    echo "update-each = \"$update\"" >> "${CONFIG_FILE}"
+    if jq -e '.defense.blocklist.urls' "$options_file" > /dev/null 2>&1; then
+        urls=$(jq -r '.defense.blocklist.urls | map("\"" + . + "\"") | join(", ")' "$options_file")
+        [ -n "$urls" ] && echo "urls = [$urls]" >> "${CONFIG_FILE}"
     fi
 fi
 
-# allowlist аналогично, и stats...
+# ----- defense.allowlist -----
+if jq -e '.defense.allowlist' "$options_file" > /dev/null 2>&1; then
+    echo >> "${CONFIG_FILE}"
+    echo "[defense.allowlist]" >> "${CONFIG_FILE}"
+    enabled=$(jq -r '.defense.allowlist.enabled // false' "$options_file")
+    conc=$(jq -r '.defense.allowlist."download-concurrency" // 2' "$options_file")
+    update=$(jq -r '.defense.allowlist."update-each" // "24h"' "$options_file")
+    echo "enabled = $enabled" >> "${CONFIG_FILE}"
+    echo "download-concurrency = $conc" >> "${CONFIG_FILE}"
+    echo "update-each = \"$update\"" >> "${CONFIG_FILE}"
+    if jq -e '.defense.allowlist.urls' "$options_file" > /dev/null 2>&1; then
+        urls=$(jq -r '.defense.allowlist.urls | map("\"" + . + "\"") | join(", ")' "$options_file")
+        [ -n "$urls" ] && echo "urls = [$urls]" >> "${CONFIG_FILE}"
+    fi
+fi
 
-bashio::log.info "Конфигурация сохранена в ${CONFIG_FILE}"
+# ----- stats.statsd -----
+if jq -e '.stats.statsd' "$options_file" > /dev/null 2>&1; then
+    echo >> "${CONFIG_FILE}"
+    echo "[stats.statsd]" >> "${CONFIG_FILE}"
+    enabled=$(jq -r '.stats.statsd.enabled // false' "$options_file")
+    address=$(jq -r '.stats.statsd.address // "127.0.0.1:8888"' "$options_file")
+    prefix=$(jq -r '.stats.statsd."metric-prefix" // "mtg"' "$options_file")
+    tag_format=$(jq -r '.stats.statsd."tag-format" // "datadog"' "$options_file")
+    echo "enabled = $enabled" >> "${CONFIG_FILE}"
+    echo "address = \"$address\"" >> "${CONFIG_FILE}"
+    echo "metric-prefix = \"$prefix\"" >> "${CONFIG_FILE}"
+    echo "tag-format = \"$tag_format\"" >> "${CONFIG_FILE}"
+fi
+
+# ----- stats.prometheus -----
+if jq -e '.stats.prometheus' "$options_file" > /dev/null 2>&1; then
+    echo >> "${CONFIG_FILE}"
+    echo "[stats.prometheus]" >> "${CONFIG_FILE}"
+    enabled=$(jq -r '.stats.prometheus.enabled // false' "$options_file")
+    bind=$(jq -r '.stats.prometheus."bind-to" // "127.0.0.1:3129"' "$options_file")
+    path=$(jq -r '.stats.prometheus."http-path" // "/"' "$options_file")
+    prefix=$(jq -r '.stats.prometheus."metric-prefix" // "mtg"' "$options_file")
+    echo "enabled = $enabled" >> "${CONFIG_FILE}"
+    echo "bind-to = \"$bind\"" >> "${CONFIG_FILE}"
+    echo "http-path = \"$path\"" >> "${CONFIG_FILE}"
+    echo "metric-prefix = \"$prefix\"" >> "${CONFIG_FILE}"
+fi
+
+echo "✅ Configuration generated at ${CONFIG_FILE}"
 exec /usr/local/bin/mtg run "${CONFIG_FILE}"
