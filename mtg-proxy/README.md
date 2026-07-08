@@ -1,82 +1,100 @@
-MTProto Proxy (mtg) — аддон для Home Assistant
-Данный аддон позволяет легко развернуть MTProto прокси для Telegram на базе mtg внутри вашего Home Assistant.
-Все настройки редактируются через стандартный интерфейс Home Assistant (Supervisor), а сам прокси работает как изолированный контейнер.
+# MTProto Proxy (mtg) Add-on for Home Assistant
 
-Особенности
-Полная интеграция с Supervisor Home Assistant.
+Этот аддон запускает легковесный MTProto-прокси [mtg](https://github.com/9seconds/mtg) внутри Home Assistant.  
+Все параметры настраиваются через интерфейс аддона — никакого ручного редактирования файлов.
 
-Конфигурация через веб-интерфейс: не нужно редактировать файлы вручную.
+## Установка
 
-Прокси слушает порт 9443 (внутри и снаружи).
+1. В Home Assistant перейдите в **Настройки → Аддоны → Магазин аддонов**.
+2. Нажмите на три точки → **Репозитории** → добавьте `https://github.com/TSergeymsk/ha_mtg_addon`.
+3. Обновите магазин и установите аддон **MTProto Proxy (mtg)**.
 
-Поддержка upstream-прокси (socks5, http и т.д.) через поле proxies.
+## Настройка параметров (интерфейс Home Assistant)
 
-Выбор предпочтительного IP-стэка (IPv4/IPv6).
+После установки перейдите на вкладку **Конфигурация**. Все поля соответствуют параметрам `mtg`.  
+**Обязательные поля:** `secret` и `bind_to` (оставьте `0.0.0.0:9443`, если не меняете порт).
 
-Режим отладки для диагностики.
+### Основные параметры
 
-Установка
-1. Локальная установка (из папки)
-Склонируйте этот репозиторий в каталог /addons вашего Home Assistant:
+| Параметр | Тип | По умолчанию | Описание |
+|----------|-----|--------------|----------|
+| `debug` | bool | `false` | Включить отладочный режим |
+| `secret` | string | *обязательно* | Секретный ключ (генерируется для вашего домена) |
+| `bind_to` | string | `0.0.0.0:9443` | Адрес:порт для прослушивания |
+| `concurrency` | int | `8192` | Максимум параллельных соединений |
+| `prefer_ip` | string | `"only-ipv4"` | Варианты: `prefer-ipv4`, `prefer-ipv6`, `only-ipv4`, `only-ipv6` |
+| `auto_update` | bool | `true` | Автоматически обновлять правила DC |
+| `tolerate_time_skewness` | string | `"5s"` | Допустимое отклонение времени |
+| `allow_fallback_on_unknown_dc` | bool | `false` | Разрешить fallback при неизвестном DC |
 
-bash
-git clone https://github.com/ваш-логин/mtg-proxy /config/addons/mtg-proxy
-(или просто скопируйте папку mtg-proxy в /config/addons).
+### Сеть (network)
 
-В интерфейсе Home Assistant перейдите в Настройки → Аддоны → Магазин аддонов.
+| Параметр | Тип | По умолчанию | Описание |
+|----------|-----|--------------|----------|
+| `network.dns` | string | `"https://1.1.1.1"` | DNS-резолвер (DoH) |
+| `network.proxies` | list of strings | `["socks5://192.168.2.1:1122"]` | Прокси для исходящих соединений |
+| `network.timeout.tcp` | string | `"5s"` | Таймаут TCP |
+| `network.timeout.http` | string | `"10s"` | Таймаут HTTP |
+| `network.timeout.idle` | string | `"1m"` | Таймаут простоя |
 
-Нажмите на три точки в правом верхнем углу → Обновить (если аддон не появился, добавьте локальный репозиторий через Репозитории → Добавить и укажите путь к папке).
+### Защита: Doppelganger (defense.doppelganger)
 
-Найдите аддон MTProto Proxy (mtg) и нажмите УСТАНОВИТЬ.
+| Параметр | Тип | По умолчанию | Описание |
+|----------|-----|--------------|----------|
+| `defense.doppelganger.urls` | list of strings | `[]` | URL-адреса для подмены (доменный фронт) |
+| `defense.doppelganger.repeats-per-raid` | int | `10` | Повторений в рейде |
+| `defense.doppelganger.raid-each` | string | `"6h"` | Интервал между рейдами |
+| `defense.doppelganger.drs` | bool | `false` | Включить DRS |
 
-2. Установка через внешний репозиторий (если опубликован)
-Если репозиторий выложен на GitHub, добавьте его URL в раздел Репозитории магазина аддонов и установите оттуда.
+### Защита: Anti-Replay (defense.anti-replay)
 
-Настройка
-После установки перейдите на вкладку Конфигурация аддона.
-Доступны следующие поля:
+| Параметр | Тип | По умолчанию | Описание |
+|----------|-----|--------------|----------|
+| `defense.anti-replay.enabled` | bool | `false` | Включить защиту от повторений |
+| `defense.anti-replay.max-size` | string | `"1mib"` | Максимальный размер кэша |
+| `defense.anti-replay.error-rate` | float | `0.001` | Допустимая доля ошибок |
 
-Поле	Тип	Описание
-debug	boolean	Включить режим отладки (подробные логи).
-secret	строка	Обязательно. Секретная строка для подключения клиентов.
-bind	строка	Адрес и порт, который слушает прокси. По умолчанию 0.0.0.0:9443.
-prefer‑ip	выбор	Предпочитать IPv4 (prefer-ipv4) или IPv6 (prefer-ipv6).
-proxies	строка	Список upstream-прокси в формате TOML (например, ["socks5://..."]).
-После заполнения нажмите СОХРАНИТЬ, затем запустите аддон на вкладке Информация.
+### Защита: блок-лист (defense.blocklist)
 
-Генерация секрета
-Секрет необходимо сгенерировать индивидуально для вашего домена (или IP-адреса).
-Это можно сделать с помощью официального образа mtg:
+| Параметр | Тип | По умолчанию | Описание |
+|----------|-----|--------------|----------|
+| `defense.blocklist.enabled` | bool | `false` | Включить блок-лист |
+| `defense.blocklist.download-concurrency` | int | `2` | Одновременных загрузок списков |
+| `defense.blocklist.urls` | list of strings | `["https://iplists.firehol.org/files/firehol_level1.netset"]` | URL-адреса списков |
+| `defense.blocklist.update-each` | string | `"24h"` | Период обновления |
 
-bash
-docker run --rm nineseconds/mtg:2 generate-secret ваш-домен.com
-На выходе вы получите строку вида ee... — вставьте её в поле secret.
+### Защита: вайт-лист (defense.allowlist)
 
-Важно: Если вы используете IP-адрес вместо домена, укажите его без протокола, например:
-docker run --rm nineseconds/mtg:2 generate-secret 192.168.1.100
+| Параметр | Тип | По умолчанию | Описание |
+|----------|-----|--------------|----------|
+| `defense.allowlist.enabled` | bool | `false` | Включить вайт-лист |
+| `defense.allowlist.download-concurrency` | int | `2` | Одновременных загрузок списков |
+| `defense.allowlist.urls` | list of strings | `[]` | URL-адреса списков |
+| `defense.allowlist.update-each` | string | `"24h"` | Период обновления |
 
-Пример конфигурации
-yaml
-debug: false
-secret: "ee1234567890abcdef..."
-bind: "0.0.0.0:9443"
-prefer_ip: "prefer-ipv6"
-proxies: '["socks5://user:pass@192.168.1.10:1080", "http://proxy.example.com:8080"]'
-После сохранения аддон автоматически сгенерирует файл /data/mtg.toml и запустит mtg с ним.
+### Статистика: StatsD (stats.statsd)
 
-Проверка работоспособности
-В логах аддона вы увидите сообщение о запуске и возможные ошибки.
+| Параметр | Тип | По умолчанию | Описание |
+|----------|-----|--------------|----------|
+| `stats.statsd.enabled` | bool | `false` | Включить отправку в StatsD |
+| `stats.statsd.address` | string | `"127.0.0.1:8888"` | Адрес StatsD-сервера |
+| `stats.statsd.metric-prefix` | string | `"mtg"` | Префикс метрик |
+| `stats.statsd.tag-format` | string | `"datadog"` | Формат тегов (`datadog` или `influxdb`) |
 
-Клиенты Telegram подключаются по адресу:
-ваш-ip:9443 (или домен:9443).
+### Статистика: Prometheus (stats.prometheus)
 
-В качестве секрета используется строка, которую вы указали в настройках.
+| Параметр | Тип | По умолчанию | Описание |
+|----------|-----|--------------|----------|
+| `stats.prometheus.enabled` | bool | `false` | Включить экспорт в Prometheus |
+| `stats.prometheus.bind-to` | string | `"127.0.0.1:3129"` | Адрес:порт для сервера метрик |
+| `stats.prometheus.http-path` | string | `"/"` | HTTP-путь для метрик |
+| `stats.prometheus.metric-prefix` | string | `"mtg"` | Префикс метрик |
 
-Поддержка
-Официальный репозиторий mtg: 9seconds/mtg
+---
 
-По вопросам работы аддона создавайте Issue в этом репозитории.
+## Генерация секрета
 
-Лицензия
-Аддон распространяется под лицензией MIT (как и оригинальный mtg). Используйте на свой страх и риск.
+Секрет нужно сгенерировать для вашего домена (или IP) командой:
 
+```bash
+docker run --rm nineseconds/mtg:2 generate-secret --hex ваш_домен
