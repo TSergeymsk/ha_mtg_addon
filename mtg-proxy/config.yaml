@@ -1,7 +1,7 @@
 name: "MTProto Proxy"
 version: "1.0.0"
-slug: "mtg_proxy_test"    # оставьте новый slug, чтобы не конфликтовать
-description: "Test addon"
+slug: "mtg_proxy_test"
+description: "MTProto proxy for Telegram"
 arch:
   - amd64
   - aarch64
@@ -16,24 +16,18 @@ ports_description:
 options:
   debug: false
   secret: "xxxxx"
-  bind-to: "0.0.0.0:9443"
+  bind_to: "0.0.0.0:9443"
   concurrency: 8192
-  prefer-ip: "only-ipv4"
-  auto-update: true
-  tolerate-time-skewness: "5s"
-  allow-fallback-on-unknown-dc: false
+  prefer_ip: "only-ipv4"
+  auto_update: true
+  tolerate_time_skewness: "5s"
+  allow_fallback_on_unknown_dc: false
 schema:
   debug: bool
   secret: str
-  bind-to: str
+  bind_to: str
   concurrency: int
-  prefer-ip:
-    type: str
-    match:
-      - "prefer-ipv4"
-      - "prefer-ipv6"
-      - "only-ipv4"
-      - "only-ipv6"
-  auto-update: bool
-  tolerate-time-skewness: str
-  allow-fallback-on-unknown-dc: bool
+  prefer_ip: str
+  auto_update: bool
+  tolerate_time_skewness: str
+  allow_fallback_on_unknown_dc: bool
