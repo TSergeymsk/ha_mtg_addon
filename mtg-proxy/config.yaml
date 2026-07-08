@@ -1,25 +1,10 @@
 name: "MTProto Proxy (mtg)"
 version: "1.0.0"
-slug: "mtg_proxy"
-description: "Легковесный MTProto прокси для Telegram"
+slug: "mtg_proxy_test"
+description: "Test"
 arch:
-  - armhf
-  - armv7
-  - aarch64
   - amd64
+  - aarch64
+  - armv7
+  - armhf
   - i386
-init: false
-options:
-  debug: false
-  secret: ""
-  bind: "0.0.0.0:9443"
-  prefer_ip: "prefer-ipv4"
-  proxies: ""
-schema:
-  debug: bool
-  secret: str
-  bind: str
-  prefer_ip: "prefer-ipv4|prefer-ipv6"
-  proxies: str
-ports:
-  9443/tcp: 9443
