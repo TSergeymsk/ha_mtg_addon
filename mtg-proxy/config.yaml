@@ -1,10 +1,27 @@
 name: "MTProto Proxy (mtg)"
 version: "1.0.0"
-slug: "mtg_proxy_test"
-description: "Test"
+slug: "mtg_proxy"
+description: "Легковесный MTProto прокси для Telegram"
 arch:
-  - amd64
-  - aarch64
-  - armv7
   - armhf
+  - armv7
+  - aarch64
+  - amd64
   - i386
+init: false
+
+# Пробрасываем порт 9443 наружу
+ports:
+  9443/tcp: 9443
+ports_description:
+  9443/tcp: "MTProto Proxy Port"
+
+# Опции, которые пользователь видит в интерфейсе
+options:
+  # Поле для TOML-конфигурации. Значение по умолчанию — пустая строка.
+  config: ""
+
+# Схема валидации введенных данных
+schema:
+  # Поле config — обязательная строка
+  config: str
