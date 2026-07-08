@@ -1,5 +1,5 @@
 name: "MTProto Proxy (mtg)"
-version: "1.0.1"
+version: "1.0.0"
 slug: "mtg_proxy"
 description: "Легковесный MTProto прокси для Telegram"
 arch:
@@ -24,7 +24,6 @@ options:
   auto-update: true
   tolerate-time-skewness: "5s"
   allow-fallback-on-unknown-dc: false
-  domain-fronting: {}                       # Пустой раздел, если не используется
   network:
     dns: "https://1.1.1.1"
     proxies:
@@ -35,7 +34,7 @@ options:
       idle: "1m"
   defense:
     doppelganger:
-      urls: []                              # Можно добавить URL-адреса
+      urls: []
       repeats-per-raid: 10
       raid-each: "6h"
       drs: false
@@ -81,15 +80,13 @@ schema:
   auto-update: bool
   tolerate-time-skewness: str
   allow-fallback-on-unknown-dc: bool
-  domain-fronting:
-    type: dict
-    schema: {}                                # Пустой словарь, т.к. нет вложенных полей
   network:
     type: dict
     schema:
       dns: str
       proxies:
-        - str
+        type: list
+        schema: str
       timeout:
         type: dict
         schema:
@@ -103,7 +100,8 @@ schema:
         type: dict
         schema:
           urls:
-            - str
+            type: list
+            schema: str
           repeats-per-raid: int
           raid-each: str
           drs: bool
@@ -119,7 +117,8 @@ schema:
           enabled: bool
           download-concurrency: int
           urls:
-            - str
+            type: list
+            schema: str
           update-each: str
       allowlist:
         type: dict
@@ -127,7 +126,8 @@ schema:
           enabled: bool
           download-concurrency: int
           urls:
-            - str
+            type: list
+            schema: str
           update-each: str
   stats:
     type: dict
