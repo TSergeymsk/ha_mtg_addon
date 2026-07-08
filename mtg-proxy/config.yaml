@@ -1,5 +1,5 @@
 name: "MTProto Proxy (mtg)"
-version: "1.0.0"
+version: "1.0.1"
 slug: "mtg_proxy"
 description: "Легковесный MTProto прокси для Telegram"
 arch:
@@ -10,18 +10,139 @@ arch:
   - i386
 init: false
 
-# Пробрасываем порт 9443 наружу
 ports:
   9443/tcp: 9443
 ports_description:
   9443/tcp: "MTProto Proxy Port"
 
-# Опции, которые пользователь видит в интерфейсе
 options:
-  # Поле для TOML-конфигурации. Значение по умолчанию — пустая строка.
-  config: ""
+  debug: false
+  secret: "xxxxx"                           # Замените на свой секрет
+  bind-to: "0.0.0.0:9443"
+  concurrency: 8192
+  prefer-ip: "only-ipv4"
+  auto-update: true
+  tolerate-time-skewness: "5s"
+  allow-fallback-on-unknown-dc: false
+  domain-fronting: {}                       # Пустой раздел, если не используется
+  network:
+    dns: "https://1.1.1.1"
+    proxies:
+      - "socks5://192.168.2.1:1122"
+    timeout:
+      tcp: "5s"
+      http: "10s"
+      idle: "1m"
+  defense:
+    doppelganger:
+      urls: []                              # Можно добавить URL-адреса
+      repeats-per-raid: 10
+      raid-each: "6h"
+      drs: false
+    anti-replay:
+      enabled: false
+      max-size: "1mib"
+      error-rate: 0.001
+    blocklist:
+      enabled: false
+      download-concurrency: 2
+      urls:
+        - "https://iplists.firehol.org/files/firehol_level1.netset"
+      update-each: "24h"
+    allowlist:
+      enabled: false
+      download-concurrency: 2
+      urls: []
+      update-each: "24h"
+  stats:
+    statsd:
+      enabled: false
+      address: "127.0.0.1:8888"
+      metric-prefix: "mtg"
+      tag-format: "datadog"
+    prometheus:
+      enabled: false
+      bind-to: "127.0.0.1:3129"
+      http-path: "/"
+      metric-prefix: "mtg"
 
-# Схема валидации введенных данных
 schema:
-  # Поле config — обязательная строка
-  config: str
+  debug: bool
+  secret: str
+  bind-to: str
+  concurrency: int
+  prefer-ip:
+    type: str
+    match:
+      - "prefer-ipv4"
+      - "prefer-ipv6"
+      - "only-ipv4"
+      - "only-ipv6"
+  auto-update: bool
+  tolerate-time-skewness: str
+  allow-fallback-on-unknown-dc: bool
+  domain-fronting:
+    type: dict
+    schema: {}                                # Пустой словарь, т.к. нет вложенных полей
+  network:
+    type: dict
+    schema:
+      dns: str
+      proxies:
+        - str
+      timeout:
+        type: dict
+        schema:
+          tcp: str
+          http: str
+          idle: str
+  defense:
+    type: dict
+    schema:
+      doppelganger:
+        type: dict
+        schema:
+          urls:
+            - str
+          repeats-per-raid: int
+          raid-each: str
+          drs: bool
+      anti-replay:
+        type: dict
+        schema:
+          enabled: bool
+          max-size: str
+          error-rate: float
+      blocklist:
+        type: dict
+        schema:
+          enabled: bool
+          download-concurrency: int
+          urls:
+            - str
+          update-each: str
+      allowlist:
+        type: dict
+        schema:
+          enabled: bool
+          download-concurrency: int
+          urls:
+            - str
+          update-each: str
+  stats:
+    type: dict
+    schema:
+      statsd:
+        type: dict
+        schema:
+          enabled: bool
+          address: str
+          metric-prefix: str
+          tag-format: str
+      prometheus:
+        type: dict
+        schema:
+          enabled: bool
+          bind-to: str
+          http-path: str
+          metric-prefix: str
