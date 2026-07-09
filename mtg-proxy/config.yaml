@@ -22,13 +22,6 @@ options:
   auto_update: true
   tolerate_time_skewness: "5s"
   allow_fallback_on_unknown_dc: false
-  network:
-  dns: "https://1.1.1.1"
-  proxies: ["socks5://192.168.2.1:1122"]
-  timeout:
-    tcp: "5s"
-    http: "10s"
-    idle: "1m"
 schema:
   debug: bool
   secret: str
@@ -38,16 +31,3 @@ schema:
   auto_update: bool
   tolerate_time_skewness: str
   allow_fallback_on_unknown_dc: bool
-  network:
-  type: dict
-  schema:
-    dns: str
-    proxies:
-      type: list
-      schema: str
-    timeout:
-      type: dict
-      schema:
-        tcp: str
-        http: str
-        idle: str
