@@ -1,5 +1,5 @@
 name: "MTProto Proxy"
-version: "1.1.3"
+version: "1.1.2"
 slug: "mtg_proxy_test"
 description: "MTProto proxy for Telegram"
 arch:
@@ -13,7 +13,9 @@ ports:
   9443/tcp: 9443
 ports_description:
   9443/tcp: "MTProto Proxy Port"
+
 options:
+  # Основные параметры
   debug: false
   secret: "xxxxx"
   bind_to: "0.0.0.0:9443"
@@ -22,15 +24,53 @@ options:
   auto_update: true
   tolerate_time_skewness: "5s"
   allow_fallback_on_unknown_dc: false
-  network:
-    dns: "https://1.1.1.1"
-    proxies:
-      - "socks5://192.168.2.1:1122"
-    timeout:
-      tcp: "5s"
-      http: "10s"
-      idle: "1m"
+
+  # network (плоские)
+  network_dns: "https://1.1.1.1"
+  network_proxies:
+    - "socks5://192.168.2.1:1122"
+  network_timeout_tcp: "5s"
+  network_timeout_http: "10s"
+  network_timeout_idle: "1m"
+
+  # defense.doppelganger
+  defense_doppelganger_urls: []
+  defense_doppelganger_repeats_per_raid: 10
+  defense_doppelganger_raid_each: "6h"
+  defense_doppelganger_drs: false
+
+  # defense.anti-replay
+  defense_anti_replay_enabled: false
+  defense_anti_replay_max_size: "1mib"
+  defense_anti_replay_error_rate: 0.001
+
+  # defense.blocklist
+  defense_blocklist_enabled: false
+  defense_blocklist_download_concurrency: 2
+  defense_blocklist_urls:
+    - "https://iplists.firehol.org/files/firehol_level1.netset"
+  defense_blocklist_update_each: "24h"
+
+  # defense.allowlist
+  defense_allowlist_enabled: false
+  defense_allowlist_download_concurrency: 2
+  defense_allowlist_urls: []
+  defense_allowlist_update_each: "24h"
+
+  # stats.statsd
+  stats_statsd_enabled: false
+  stats_statsd_address: "127.0.0.1:8888"
+  stats_statsd_metric_prefix: "mtg"
+  stats_statsd_tag_format: "datadog"
+
+  # stats.prometheus
+  stats_prometheus_enabled: false
+  stats_prometheus_bind_to: "127.0.0.1:3129"
+  stats_prometheus_http_path: "/"
+  stats_prometheus_metric_prefix: "mtg"
+
 schema:
+  # Основные параметры
   debug: bool
   secret: str
   bind_to: str
@@ -39,16 +79,53 @@ schema:
   auto_update: bool
   tolerate_time_skewness: str
   allow_fallback_on_unknown_dc: bool
-  network:
-    type: dict
-    schema:
-      dns: str
-      proxies:
-        type: list
-        schema: str
-      timeout:
-        type: dict
-        schema:
-          tcp: str
-          http: str
-          idle: str
+
+  # network
+  network_dns: str
+  network_proxies:
+    type: list
+    schema: str
+  network_timeout_tcp: str
+  network_timeout_http: str
+  network_timeout_idle: str
+
+  # defense.doppelganger
+  defense_doppelganger_urls:
+    type: list
+    schema: str
+  defense_doppelganger_repeats_per_raid: int
+  defense_doppelganger_raid_each: str
+  defense_doppelganger_drs: bool
+
+  # defense.anti-replay
+  defense_anti_replay_enabled: bool
+  defense_anti_replay_max_size: str
+  defense_anti_replay_error_rate: float
+
+  # defense.blocklist
+  defense_blocklist_enabled: bool
+  defense_blocklist_download_concurrency: int
+  defense_blocklist_urls:
+    type: list
+    schema: str
+  defense_blocklist_update_each: str
+
+  # defense.allowlist
+  defense_allowlist_enabled: bool
+  defense_allowlist_download_concurrency: int
+  defense_allowlist_urls:
+    type: list
+    schema: str
+  defense_allowlist_update_each: str
+
+  # stats.statsd
+  stats_statsd_enabled: bool
+  stats_statsd_address: str
+  stats_statsd_metric_prefix: str
+  stats_statsd_tag_format: str
+
+  # stats.prometheus
+  stats_prometheus_enabled: bool
+  stats_prometheus_bind_to: str
+  stats_prometheus_http_path: str
+  stats_prometheus_metric_prefix: str
