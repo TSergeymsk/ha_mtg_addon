@@ -1,33 +1,25 @@
-name: "MTProto Proxy"
-version: "1.0.0"
-slug: "mtg_proxy_test"
-description: "MTProto proxy for Telegram"
+name: "MTProto Proxy (mtg)"
+version: "1.1.0"
+slug: "mtg_proxy"
+description: "Легковесный MTProto прокси для Telegram"
 arch:
-  - amd64
-  - aarch64
-  - armv7
   - armhf
+  - armv7
+  - aarch64
+  - amd64
   - i386
 init: false
-ports:
-  9443/tcp: 9443
-ports_description:
-  9443/tcp: "MTProto Proxy Port"
 options:
   debug: false
-  secret: "xxxxx"
-  bind_to: "0.0.0.0:9443"
-  concurrency: 8192
-  prefer_ip: "only-ipv4"
-  auto_update: true
-  tolerate_time_skewness: "5s"
-  allow_fallback_on_unknown_dc: false
+  secret: ""
+  bind: "0.0.0.0:9443"
+  prefer_ip: "prefer-ipv4"
+  proxies: ""                # <-- добавлено
 schema:
   debug: bool
   secret: str
-  bind_to: str
-  concurrency: int
-  prefer_ip: str
-  auto_update: bool
-  tolerate_time_skewness: str
-  allow_fallback_on_unknown_dc: bool
+  bind: str
+  prefer_ip: "prefer-ipv4|prefer-ipv6"
+  proxies: str               # <-- добавлено
+ports:
+  9443/tcp: 9443
