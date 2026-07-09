@@ -1,5 +1,5 @@
 name: "MTProto Proxy"
-version: "1.1.1"
+version: "1.1.2"
 slug: "mtg_proxy_test"
 description: "MTProto proxy for Telegram"
 arch:
@@ -13,7 +13,9 @@ ports:
   9443/tcp: 9443
 ports_description:
   9443/tcp: "MTProto Proxy Port"
+
 options:
+  # Основные параметры
   debug: false
   secret: "xxxxx"
   bind_to: "0.0.0.0:9443"
@@ -22,7 +24,55 @@ options:
   auto_update: true
   tolerate_time_skewness: "5s"
   allow_fallback_on_unknown_dc: false
+
+  # Раздел network
+  network:
+    dns: "https://1.1.1.1"
+    proxies:
+      - "socks5://192.168.2.1:1122"
+    timeout:
+      tcp: "5s"
+      http: "10s"
+      idle: "1m"
+
+  # Раздел defense
+  defense:
+    doppelganger:
+      urls: []
+      repeats_per_raid: 10
+      raid_each: "6h"
+      drs: false
+    anti_replay:
+      enabled: false
+      max_size: "1mib"
+      error_rate: 0.001
+    blocklist:
+      enabled: false
+      download_concurrency: 2
+      urls:
+        - "https://iplists.firehol.org/files/firehol_level1.netset"
+      update_each: "24h"
+    allowlist:
+      enabled: false
+      download_concurrency: 2
+      urls: []
+      update_each: "24h"
+
+  # Раздел stats
+  stats:
+    statsd:
+      enabled: false
+      address: "127.0.0.1:8888"
+      metric_prefix: "mtg"
+      tag_format: "datadog"
+    prometheus:
+      enabled: false
+      bind_to: "127.0.0.1:3129"
+      http_path: "/"
+      metric_prefix: "mtg"
+
 schema:
+  # Основные параметры
   debug: bool
   secret: str
   bind_to: str
@@ -31,3 +81,75 @@ schema:
   auto_update: bool
   tolerate_time_skewness: str
   allow_fallback_on_unknown_dc: bool
+
+  # network
+  network:
+    type: dict
+    schema:
+      dns: str
+      proxies:
+        type: list
+        schema: str
+      timeout:
+        type: dict
+        schema:
+          tcp: str
+          http: str
+          idle: str
+
+  # defense
+  defense:
+    type: dict
+    schema:
+      doppelganger:
+        type: dict
+        schema:
+          urls:
+            type: list
+            schema: str
+          repeats_per_raid: int
+          raid_each: str
+          drs: bool
+      anti_replay:
+        type: dict
+        schema:
+          enabled: bool
+          max_size: str
+          error_rate: float
+      blocklist:
+        type: dict
+        schema:
+          enabled: bool
+          download_concurrency: int
+          urls:
+            type: list
+            schema: str
+          update_each: str
+      allowlist:
+        type: dict
+        schema:
+          enabled: bool
+          download_concurrency: int
+          urls:
+            type: list
+            schema: str
+          update_each: str
+
+  # stats
+  stats:
+    type: dict
+    schema:
+      statsd:
+        type: dict
+        schema:
+          enabled: bool
+          address: str
+          metric_prefix: str
+          tag_format: str
+      prometheus:
+        type: dict
+        schema:
+          enabled: bool
+          bind_to: str
+          http_path: str
+          metric_prefix: str
