@@ -22,8 +22,7 @@ options:
   auto_update: true
   tolerate_time_skewness: "5s"
   allow_fallback_on_unknown_dc: false
-  proxies:
-    - "socks5://192.168.2.1:1122"
+  proxies: "socks5://192.168.2.1:1122"   # через запятую, если несколько
 schema:
   debug: bool
   secret: str
@@ -33,6 +32,4 @@ schema:
   auto_update: bool
   tolerate_time_skewness: str
   allow_fallback_on_unknown_dc: bool
-  proxies:
-    type: list
-    schema: str
+  proxies: str
